@@ -135,9 +135,15 @@ vm_snapshot_create() {
         return 1
     fi
 
+    local now ts full_name
+    now=$(date '+%Y-%m-%d %H:%M:%S')
+    ts="${now// /_}"       
+    ts="${ts//:/-}"        
+    full_name="${snap}_${ts}"
+
     echo "Membuat snapshot '$snap' pada VM '$vm'..."
-    if VBoxManage snapshot "$vm" take "$snap" > /dev/null 2>&1; then
-        echo "Snapshot '$snap' berhasil dibuat pada $(date '+%Y-%m-%d %H:%M:%S')."
+    if VBoxManage snapshot "$vm" take "$full_name" > /dev/null 2>&1; then
+        echo "Snapshot '$snap' berhasil dibuat pada $now."
     else
         echo "Error: gagal membuat snapshot."
         return 1
