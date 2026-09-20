@@ -1,0 +1,13 @@
+==========================================================================
+TUGAS 1 OS - KELOMPOK C4
+==========================================================================
+Check Category  | Item              | Status  | Details                  
+--------------------------------------------------------------------------
+OS              | Linux 7.0.0-30-generic| PASS    | Kernel info              
+Users           | Regular accounts  | PASS    | 2 akun                   
+Processes       | Running           | PASS    | 118 proses               
+Virtualization  | Hypervisor        | PASS    | Terdeteksi (VirtualBox)  
+Uptime          | VM                | PASS    | up 5 minutes             
+Disk            | 19%               | PASS    | Threshold check          
+vCPU            | guest:2           | PASS    | vs alokasi host          
+==========================================================================
