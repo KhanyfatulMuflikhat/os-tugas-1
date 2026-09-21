@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ACTION="$1"
 ARG2="$2"
 ARG3="$3"
@@ -165,7 +167,6 @@ vm_snapshot_list() {
     fi
 
     local output
-    local output
     output=$(VBoxManage snapshot "$vm" list --machinereadable 2>/dev/null | tr -d '\r' | grep '^SnapshotName')
 
     if [ -z "$output" ]; then
@@ -178,7 +179,7 @@ vm_snapshot_list() {
     while IFS= read -r name; do
         echo "   $i. $name"
         i=$((i + 1))
-    done < <(echo "$output" | grep '^SnapshotName' | sed 's/^SnapshotName[^=]*="\(.*\)"$/\1/')
+    done < <(echo "$output" | sed 's/^SnapshotName[^=]*="\(.*\)"$/\1/')
 }
 
 case "$ACTION" in
