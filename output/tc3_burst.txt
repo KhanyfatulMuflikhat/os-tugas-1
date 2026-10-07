@@ -1,0 +1,65 @@
+Jumlah proses            : Time Quantum Q0, Q1      : Periode boost (0=mati)   : P1  Arrival Time, Burst Time : P2  Arrival Time, Burst Time : P3  Arrival Time, Burst Time : P4  Arrival Time, Burst Time : P5  Arrival Time, Burst Time : 
+==================================================
+PROCESS INPUT  (Q0 quantum=2, Q1 quantum=4, Q2=FCFS)
+==================================================
+PID	AT	BT
+P1	0	20
+P2	1	2
+P3	2	3
+P4	3	15
+P5	4	1
+
+==================================================
+CPU EXECUTION TIMELINE
+==================================================
+| P1   | P2   | P3   | P4   | P5   | P1   | P3   | P4   | P1   | P4   |
+0      2      4      6      8      9      13     14     18     32     41
+
+==================================================
+QUEUE MIGRATIONS
+==================================================
+t=2 : P1 Q0 -> Q1 (quantum Q0 habis; sisa BT=18)
+t=6 : P3 Q0 -> Q1 (quantum Q0 habis; sisa BT=1)
+t=8 : P4 Q0 -> Q1 (quantum Q0 habis; sisa BT=13)
+t=13 : P1 Q1 -> Q2 (quantum Q1 habis; sisa BT=14)
+t=18 : P4 Q1 -> Q2 (quantum Q1 habis; sisa BT=9)
+Total Queue Migration : 5
+
+==================================================
+SCHEDULING TABLE
+==================================================
+PID	AT	BT	CT	TAT	WT	RT
+P1	0	20	32	32	12	0
+P2	1	2	4	3	1	1
+P3	2	3	14	12	9	2
+P4	3	15	41	38	23	3
+P5	4	1	9	5	4	4
+
+==================================================
+SCHEDULING PERFORMANCE
+==================================================
+Average Waiting Time    : 9.80
+Average Turnaround Time : 18.00
+Average Response Time   : 2.00
+
+==================================================
+CPU UTILIZATION AND THROUGHPUT
+==================================================
+CPU Utilization : 100.00%
+Throughput      : 0.12 process/time unit
+
+==================================================
+CONTEXT SWITCH INFORMATION
+==================================================
+Total Context Switch : 9
+  Breakdown per queue (queue tujuan): Q0=4, Q1=3, Q2=2
+Total Preemption     : 0
+
+==================================================
+PROCESS STATE TRANSITIONS
+==================================================
+P1 : NEW -> READY (t=0) -> RUNNING (t=0) -> READY (t=2) -> RUNNING (t=9) -> READY (t=13) -> RUNNING (t=18) -> TERMINATED (t=32)
+P2 : NEW -> READY (t=1) -> RUNNING (t=2) -> TERMINATED (t=4)
+P3 : NEW -> READY (t=2) -> RUNNING (t=4) -> READY (t=6) -> RUNNING (t=13) -> TERMINATED (t=14)
+P4 : NEW -> READY (t=3) -> RUNNING (t=6) -> READY (t=8) -> RUNNING (t=14) -> READY (t=18) -> RUNNING (t=32) -> TERMINATED (t=41)
+P5 : NEW -> READY (t=4) -> RUNNING (t=8) -> TERMINATED (t=9)

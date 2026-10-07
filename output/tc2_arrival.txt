@@ -1,0 +1,60 @@
+Jumlah proses            : Time Quantum Q0, Q1      : Periode boost (0=mati)   : P1  Arrival Time, Burst Time : P2  Arrival Time, Burst Time : P3  Arrival Time, Burst Time : P4  Arrival Time, Burst Time : 
+==================================================
+PROCESS INPUT  (Q0 quantum=2, Q1 quantum=4, Q2=FCFS)
+==================================================
+PID	AT	BT
+P1	0	3
+P2	10	4
+P3	15	2
+P4	20	5
+
+==================================================
+CPU EXECUTION TIMELINE
+==================================================
+| P1   | IDLE | P2   | IDLE | P3   | IDLE | P4   |
+0      3      10     14     15     17     20     25
+
+==================================================
+QUEUE MIGRATIONS
+==================================================
+t=2 : P1 Q0 -> Q1 (quantum Q0 habis; sisa BT=1)
+t=12 : P2 Q0 -> Q1 (quantum Q0 habis; sisa BT=2)
+t=22 : P4 Q0 -> Q1 (quantum Q0 habis; sisa BT=3)
+Total Queue Migration : 3
+
+==================================================
+SCHEDULING TABLE
+==================================================
+PID	AT	BT	CT	TAT	WT	RT
+P1	0	3	3	3	0	0
+P2	10	4	14	4	0	0
+P3	15	2	17	2	0	0
+P4	20	5	25	5	0	0
+
+==================================================
+SCHEDULING PERFORMANCE
+==================================================
+Average Waiting Time    : 0.00
+Average Turnaround Time : 3.50
+Average Response Time   : 0.00
+
+==================================================
+CPU UTILIZATION AND THROUGHPUT
+==================================================
+CPU Utilization : 56.00%
+Throughput      : 0.16 process/time unit
+
+==================================================
+CONTEXT SWITCH INFORMATION
+==================================================
+Total Context Switch : 3
+  Breakdown per queue (queue tujuan): Q0=3, Q1=0, Q2=0
+Total Preemption     : 0
+
+==================================================
+PROCESS STATE TRANSITIONS
+==================================================
+P1 : NEW -> READY (t=0) -> RUNNING (t=0) -> READY (t=2) -> RUNNING (t=2) -> TERMINATED (t=3)
+P2 : NEW -> READY (t=10) -> RUNNING (t=10) -> READY (t=12) -> RUNNING (t=12) -> TERMINATED (t=14)
+P3 : NEW -> READY (t=15) -> RUNNING (t=15) -> TERMINATED (t=17)
+P4 : NEW -> READY (t=20) -> RUNNING (t=20) -> READY (t=22) -> RUNNING (t=22) -> TERMINATED (t=25)
