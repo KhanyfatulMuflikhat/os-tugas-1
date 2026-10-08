@@ -1,0 +1,53 @@
+Jumlah proses            : Time Quantum Q0, Q1      : Periode boost (0=mati)   : P1  Arrival Time, Burst Time : P2  Arrival Time, Burst Time : 
+==================================================
+PROCESS INPUT  (Q0 quantum=2, Q1 quantum=4, Q2=FCFS)
+==================================================
+PID	AT	BT
+P1	0	20
+P2	10	2
+
+==================================================
+CPU EXECUTION TIMELINE
+==================================================
+| P1   | P2   | P1   |
+0      10     12     22
+
+==================================================
+QUEUE MIGRATIONS
+==================================================
+t=2 : P1 Q0 -> Q1 (quantum Q0 habis; sisa BT=18)
+t=6 : P1 Q1 -> Q2 (quantum Q1 habis; sisa BT=14)
+Total Queue Migration : 2
+
+==================================================
+SCHEDULING TABLE
+==================================================
+PID	AT	BT	CT	TAT	WT	RT
+P1	0	20	22	22	2	0
+P2	10	2	12	2	0	0
+
+==================================================
+SCHEDULING PERFORMANCE
+==================================================
+Average Waiting Time    : 1.00
+Average Turnaround Time : 12.00
+Average Response Time   : 0.00
+
+==================================================
+CPU UTILIZATION AND THROUGHPUT
+==================================================
+CPU Utilization : 100.00%
+Throughput      : 0.09 process/time unit
+
+==================================================
+CONTEXT SWITCH INFORMATION
+==================================================
+Total Context Switch : 2
+  Breakdown per queue (queue tujuan): Q0=1, Q1=0, Q2=1
+Total Preemption     : 1
+
+==================================================
+PROCESS STATE TRANSITIONS
+==================================================
+P1 : NEW -> READY (t=0) -> RUNNING (t=0) -> READY (t=2) -> RUNNING (t=2) -> READY (t=6) -> RUNNING (t=6) -> READY (t=10) -> RUNNING (t=12) -> TERMINATED (t=22)
+P2 : NEW -> READY (t=10) -> RUNNING (t=10) -> TERMINATED (t=12)
