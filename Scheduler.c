@@ -345,7 +345,7 @@ static void print_process_states(Process procs[], int n) {
     }
 }
 
-/* Urutan tampilan akhir. Cukup tambah/ubah baris di sini kalau perlu. */
+/* Cetak semua hasil simulasi secara berurutan (Gantt chart, metrik, state)  */
 static void print_all(Process procs[], int n, int quantum[NUM_Q], int total_time,
                       int busy_time) {
     print_process_input(procs, n, quantum);
