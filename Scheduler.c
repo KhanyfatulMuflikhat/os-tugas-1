@@ -93,10 +93,12 @@ static int cs_total = 0, cs_per_queue[NUM_Q] = {0, 0, 0};
 static int preempt_count = 0;
 
 static void log_state(int pid, State st, int t, int queue_level) {
+    if (n_state_log >= MAX_LOG) { fprintf(stderr, "Log state penuh (MAX_LOG)\n"); exit(1); }
     state_log[n_state_log++] = (StateEvent){pid, st, t, queue_level};
 }
 
 static void log_migration(int t, int pid, int from, int to, int remaining) {
+    if (n_mig >= MAX_LOG) { fprintf(stderr, "Log migrasi penuh (MAX_LOG)\n"); exit(1); }
     mig_log[n_mig++] = (Migration){t, pid, from, to, remaining};
 }
 
@@ -108,6 +110,7 @@ static void log_gantt(int pid, int t, int queue_level) {
         gantt[n_gantt - 1].end == t) {
         gantt[n_gantt - 1].end = t + 1;
     } else {
+        if (n_gantt >= MAX_LOG) { fprintf(stderr, "Log gantt penuh (MAX_LOG)\n"); exit(1); }
         gantt[n_gantt++] = (GanttSeg){pid, t, t + 1, queue_level};
     }
 }
@@ -150,7 +153,7 @@ static void demote(Process *p, int t) {
 
 /* Priority boost: semua proses di Q1 dan Q2 (termasuk yang sedang jalan)
  * kembali ke Q0. */
-static void priority_boost(Process *running, int t) {
+static void priority_boost(Process **running, int t) {
     for (int lv = 1; lv < NUM_Q; lv++) {
         while (!q_empty(&queues[lv])) {
             Process *p = q_pop(&queues[lv]);
@@ -160,10 +163,14 @@ static void priority_boost(Process *running, int t) {
             log_state(p->pid, ST_READY, t, 0);
         }
     }
-    if (running != NULL && running->queue_level > 0) {
-        log_migration(t, running->pid, running->queue_level, 0, running->remaining);
-        running->queue_level = 0;
-        log_state(running->pid, ST_READY, t, 0);
+    if (*running != NULL && (*running)->queue_level > 0) {
+        Process *r = *running;
+        log_migration(t, r->pid, r->queue_level, 0, r->remaining);
+        r->queue_level = 0;
+        r->state = ST_READY;
+        q_push_back(&queues[0], r);      
+        log_state(r->pid, ST_READY, t, 0);
+        *running = NULL;                 
     }
 }
 
@@ -185,7 +192,7 @@ static int run_mlfq(Process procs[], int n, int quantum[NUM_Q], int boost_period
 
         /* (b) aging / priority boost (opsional) */
         if (boost_period > 0 && t > 0 && t % boost_period == 0)
-            priority_boost(running, t);
+            priority_boost(&running, t);
 
         /* (c) PREEMPSI: ada proses di Q0, sedangkan yang jalan dari Q1/Q2 */
         if (running != NULL && running->queue_level > 0 && !q_empty(&queues[0])) {
@@ -247,7 +254,7 @@ static int run_mlfq(Process procs[], int n, int quantum[NUM_Q], int boost_period
 /*    Jangan ubah run_mlfq() / struct / fungsi log_...().              */
 /* ------------------------------------------------------------------ */
 
-#define LINE "==================================================\n"
+#define LINE "=======================================================================\n"
 
 static const char *state_name(State s) {
     switch (s) {
@@ -273,16 +280,30 @@ static void print_process_input(Process procs[], int n, int quantum[NUM_Q]) {
 static void print_gantt(void) {
     printf("\n" LINE "CPU EXECUTION TIMELINE (GANTT CHART)\n" LINE);
     for (int i = 0; i < n_gantt; i++) {
-        if (gantt[i].pid == -1)
-            printf("|   IDLE     ");
-        else
-            printf("|   P%d(Q%d)   ", gantt[i].pid, gantt[i].queue_level);
+        char lab[24];
+        if (gantt[i].pid == -1) snprintf(lab, sizeof lab, "IDLE");
+        else snprintf(lab, sizeof lab, "P%d(Q%d)", gantt[i].pid, gantt[i].queue_level);
+        printf("| %-11s", lab);      /* tiap sel 13 karakter, cocok dengan %-13d */
     }
     printf("|\n");
     for (int i = 0; i < n_gantt; i++)
         printf("%-13d", gantt[i].start);
     if (n_gantt > 0)
         printf("%d\n", gantt[n_gantt - 1].end);
+}
+/* ---------- VARIAN MLFQ : Queue Migration  (PIC: A) ---------- */
+static void print_queue_migrations(void) {
+    printf("\n" LINE "QUEUE MIGRATIONS\n" LINE);
+    for (int i = 0; i < n_mig; i++) {
+        if (mig_log[i].to == 0)   /* naik ke Q0 = priority boost */
+            printf("t=%d : P%d Q%d -> Q0 (priority boost; sisa BT=%d)\n", mig_log[i].t,
+                   mig_log[i].pid, mig_log[i].from, mig_log[i].remaining);
+        else
+            printf("t=%d : P%d Q%d -> Q%d (quantum Q%d habis; sisa BT=%d)\n", mig_log[i].t,
+                   mig_log[i].pid, mig_log[i].from, mig_log[i].to, mig_log[i].from,
+                   mig_log[i].remaining);
+    }
+    printf("Total Queue Migration : %d\n", n_mig);
 }
 
 static void print_movements(Process procs[], int n) {
@@ -319,19 +340,12 @@ static void print_movements(Process procs[], int n) {
         printf(" -> TERMINATED (t=%d)\n", ct);
     }
 }
-/* ---------- VARIAN MLFQ : Queue Migration  (PIC: A) ---------- */
-static void print_queue_migrations(void) {
-    printf("\n" LINE "QUEUE MIGRATIONS\n" LINE);
-    for (int i = 0; i < n_mig; i++) {
-        if (mig_log[i].to == 0)   /* naik ke Q0 = priority boost */
-            printf("t=%d : P%d Q%d -> Q0 (priority boost; sisa BT=%d)\n", mig_log[i].t,
-                   mig_log[i].pid, mig_log[i].from, mig_log[i].remaining);
-        else
-            printf("t=%d : P%d Q%d -> Q%d (quantum Q%d habis; sisa BT=%d)\n", mig_log[i].t,
-                   mig_log[i].pid, mig_log[i].from, mig_log[i].to, mig_log[i].from,
-                   mig_log[i].remaining);
-    }
-    printf("Total Queue Migration : %d\n", n_mig);
+
+static void print_preemptions(void) {
+    printf(LINE "HIGHER-QUEUE PREEMPTIONS\n" LINE);
+    if (preempt_count == 0)
+        printf("Tidak ada preemption antarqueue.\n");
+    printf("Total Preemption Antarqueue : %d\n", preempt_count);
 }
 
 /* ---------- BAGIAN 3 : Scheduling Table ---------- */
@@ -345,12 +359,12 @@ static Metric calc_metric(const Process *p) {
     return m;
 }
  
-#define DASH "--------------------------------------------------\n"
+#define DASH "-----------------------------------------------------------------------\n"
  
 static void print_scheduling_table(Process procs[], int n) {
     printf("\n" LINE "SCHEDULING TABLE\n" LINE);
-    printf("%-8s%-8s%-8s%-8s%-9s%-8s%-8s%s\n",
-        "PID", "AT", "BT", "CT", "TAT", "WT", "RT", "Final Q");
+    printf("%-5s%5s%5s%5s%6s%5s%5s%8s\n",
+       "PID", "AT", "BT", "CT", "TAT", "WT", "RT", "Final Q");
     printf(DASH);
     for (int i = 0; i < n; i++) {
         Metric m = calc_metric(&procs[i]);
@@ -376,7 +390,7 @@ static void print_averages(Process procs[], int n) {
     printf("Average Response Time   : %.2f\n", srt / n);
 }
  
-/* ---------- BAGIAN 5 : CPU Utilization & Throughput ---------- */                              */
+/* ---------- BAGIAN 5 : CPU Utilization & Throughput ---------- */                              
 static void print_cpu_util_throughput(int n, int total_time, int busy_time) {
     printf("\n" LINE "CPU UTILIZATION AND THROUGHPUT\n" LINE);
     if (total_time <= 0) { printf("Total waktu simulasi 0, metrik tidak terdefinisi.\n"); return; }
@@ -384,12 +398,6 @@ static void print_cpu_util_throughput(int n, int total_time, int busy_time) {
     printf("Throughput      : %.2f process/time unit\n", (double)n / total_time);
 }
 
-static void print_preemptions(void) {
-    printf(LINE "HIGHER-QUEUE PREEMPTIONS\n" LINE);
-    if (preempt_count == 0)
-        printf("Tidak ada preemption antarqueue.\n");
-    printf("Total Preemption Antarqueue : %d\n", preempt_count);
-}
 /* ---------- BAGIAN 6 : Context Switch  (PIC: A) ---------- */
 static void print_context_switch(void) {
     printf("\n" LINE "CONTEXT SWITCH INFORMATION\n" LINE);
