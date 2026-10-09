@@ -5,29 +5,19 @@
  * Q1 = Round Robin (quantum q1)
  * Q2 = FCFS (tanpa quantum, jalan sampai selesai)
  *
- * ===== BAGIAN A (CORE ENGINE) ada di section "1" dan "2" =====
- * Section 4 = fungsi output, SATU FUNGSI PER BAGIAN SOAL. Tiap anggota hanya
- * mengedit fungsi print bagiannya (lihat tag "PIC" di komentar):
- *   A : engine, print_queue_migrations, print_context_switch
- *   B : print_process_input, print_gantt
- *   C : print_scheduling_table, print_averages, print_cpu_util_throughput
- *   D : print_process_states + skenario pengujian
- * Jangan ubah struct Process, run_mlfq(), dan fungsi log_...() tanpa
- * memberi tahu A.
- *
- * ATURAN DESAIN (jelaskan di video/laporan):
- *  1. Proses baru selalu masuk ke ujung Q0.
- *  2. Scheduler selalu ambil proses dari queue teratas yang tidak kosong.
- *  3. Jika quantum habis dan proses belum selesai -> DEMOTE (Q0->Q1, Q1->Q2).
- *  4. Q2 (FCFS) tidak punya quantum, hanya bisa berhenti karena selesai/preempt.
- *  5. PREEMPTIVE antar queue: proses yang baru tiba di Q0 langsung merebut CPU
- *     dari proses yang sedang jalan di Q1/Q2. Proses yang di-preempt kembali ke
- *     DEPAN queue-nya sendiri (urutan tidak berubah) dan quantum dihitung ulang.
- *  6. Jika proses tiba tepat saat quantum proses lain habis, proses yang tiba
- *     dimasukkan ke queue DULU, baru proses yang di-demote.
- *  7. (Opsional) Priority boost: tiap boost_period, semua proses Q1/Q2 naik ke Q0.
- *  8. Context switch = CPU pindah dari proses X ke proses Y (X != Y).
- *     Idle di antara dua proses tidak dihitung switch jika prosesnya sama.
+ *  ATURAN DESAIN :
+    1. Proses baru selalu masuk ke ujung Q0.
+    2. Scheduler selalu ambil proses dari queue teratas yang tidak kosong.
+    3. Jika quantum habis dan proses belum selesai, DEMOTE (Q0->Q1, Q1->Q2).
+    4. Q2 (FCFS) tidak punya quantum, hanya bisa berhenti karena selesai/preempt.
+    5. PREEMPTIVE antar queue: proses yang baru tiba di Q0 langsung merebut CPU
+       dari proses yang sedang jalan di Q1/Q2. Proses yang di-preempt kembali ke
+       depam queue-nya sendiri (urutan tidak berubah) dan quantum dihitung ulang.
+    6. Jika proses tiba tepat saat quantum proses lain habis, proses yang tiba
+       dimasukkan ke queue DULU, baru proses yang di-demote.
+    7. Priority boost: tiap boost_period, semua proses Q1/Q2 naik ke Q0.
+    8. Context switch = CPU pindah dari proses X ke proses Y (X != Y).
+       Idle di antara dua proses tidak dihitung switch jika prosesnya sama.
  */
 
 #include <stdio.h>
@@ -78,7 +68,7 @@ static Process *q_pop(Queue *q) {
 static int q_empty(Queue *q) { return q->count == 0; }
 
 /* ------------------------------------------------------------------ */
-/* 3. LOGGING (versi minimal; dipakai engine A)                        */
+/*                              3. LOGGING                            */
 /* ------------------------------------------------------------------ */
 
 typedef struct { int pid; State st; int t; int queue_level;} StateEvent;
@@ -122,14 +112,13 @@ static void log_context_switch(int from_pid, int to_pid, int queue) {
     cs_per_queue[queue]++;
 }
 
-/* ------------------------------------------------------------------ */
-/* 2. CORE MLFQ ENGINE  (BAGIAN A)                                     */
-/* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------
+                        2. CORE MLFQ ENGINE                                               
+------------------------------------------------------------------ */
 
 static Queue queues[NUM_Q];
 
-/* Masukkan semua proses yang sudah tiba (state NEW dan at <= t) ke ujung Q0.
- * Dipanggil sebelum demote supaya urutan arrival-vs-demote benar (aturan 6). */
+/* Masukkan semua proses yang sudah tiba (state NEW dan at <= t) ke ujung Q0. Dipanggil sebelum demote supaya urutan arrival-vs-demote benar (aturan 6). */
 static void admit_arrivals(Process procs[], int n, int t) {
     for (int i = 0; i < n; i++) {
         if (procs[i].state == ST_NEW && procs[i].at <= t) {
@@ -151,8 +140,7 @@ static void demote(Process *p, int t) {
     log_state(p->pid, ST_READY, t, to);
 }
 
-/* Priority boost: semua proses di Q1 dan Q2 (termasuk yang sedang jalan)
- * kembali ke Q0. */
+/* Priority boost: semua proses di Q1 dan Q2 (termasuk yang sedang jalan) kembali ke Q0. */
 static void priority_boost(Process **running, int t) {
     for (int lv = 1; lv < NUM_Q; lv++) {
         while (!q_empty(&queues[lv])) {
@@ -187,14 +175,14 @@ static int run_mlfq(Process procs[], int n, int quantum[NUM_Q], int boost_period
     *busy_time = 0;
 
     while (done < n) {
-        /* (a) proses yang tiba pada waktu t masuk Q0 */
+        /* (a) proses yang tiba pada waktu t masuk Q0  */
         admit_arrivals(procs, n, t);
 
-        /* (b) aging / priority boost (opsional) */
+        /* (b) aging / priority boost */
         if (boost_period > 0 && t > 0 && t % boost_period == 0)
             priority_boost(&running, t);
 
-        /* (c) PREEMPSI: ada proses di Q0, sedangkan yang jalan dari Q1/Q2 */
+        /* (c) PREEMPT: ada proses di Q0, sedangkan yang jalan dari Q1/Q2 */
         if (running != NULL && running->queue_level > 0 && !q_empty(&queues[0])) {
             running->state = ST_READY;
             q_push_front(&queues[running->queue_level], running); /* tetap di depan */
@@ -209,7 +197,7 @@ static int run_mlfq(Process procs[], int n, int quantum[NUM_Q], int boost_period
             for (int i = 0; i < NUM_Q; i++)
                 if (!q_empty(&queues[i])) { lv = i; break; }
 
-            if (lv == -1) {              /* semua queue kosong -> CPU idle */
+            if (lv == -1) {              /* semua queue kosong, maka CPU idle */
                 log_gantt(-1, t, -1);
                 t++;
                 continue;
@@ -249,11 +237,6 @@ static int run_mlfq(Process procs[], int n, int quantum[NUM_Q], int boost_period
     return t;
 }
 
-/* ------------------------------------------------------------------ */
-/* 4. OUTPUT -- satu fungsi per bagian, tiap orang edit fungsinya sendiri */
-/*    Jangan ubah run_mlfq() / struct / fungsi log_...().              */
-/* ------------------------------------------------------------------ */
-
 #define LINE "=======================================================================\n"
 
 static const char *state_name(State s) {
@@ -265,7 +248,7 @@ static const char *state_name(State s) {
     }
 }
 
-/* ---------- BAGIAN 1 : Process Input  (PIC: B) ---------- */
+/* ---------- Bagian 1 : Process Input   ---------- */
 static void print_process_input(Process procs[], int n, int quantum[NUM_Q]) {
     printf("\n" LINE "PROCESS INPUT AND QUEUE CONFIGURATION\n" LINE "(Q0: RR quantum=%d, Q1: RR quantum=%d, Q2: FCFS)\n" LINE,
            quantum[0], quantum[1]);
@@ -276,7 +259,7 @@ static void print_process_input(Process procs[], int n, int quantum[NUM_Q]) {
     printf(LINE);
 }
 
-/* ---------- BAGIAN 2 : Gantt Chart  (PIC: B) ---------- */
+/* ---------- Bagian 2 : Gantt Chart   ---------- */
 static void print_gantt(void) {
     printf("\n" LINE "CPU EXECUTION TIMELINE (GANTT CHART)\n" LINE);
     for (int i = 0; i < n_gantt; i++) {
@@ -291,7 +274,7 @@ static void print_gantt(void) {
     if (n_gantt > 0)
         printf("%d\n", gantt[n_gantt - 1].end);
 }
-/* ---------- VARIAN MLFQ : Queue Migration  (PIC: A) ---------- */
+/* ---------- Var MLFQ : Queue Migration   ---------- */
 static void print_queue_migrations(void) {
     printf("\n" LINE "QUEUE MIGRATIONS\n" LINE);
     for (int i = 0; i < n_mig; i++) {
@@ -348,7 +331,7 @@ static void print_preemptions(void) {
     printf("Total Preemption Antarqueue : %d\n", preempt_count);
 }
 
-/* ---------- BAGIAN 3 : Scheduling Table ---------- */
+/* ---------- Bagian 3 : Scheduling Table ---------- */
 typedef struct { int tat, wt, rt; } Metric;
  
 static Metric calc_metric(const Process *p) {
@@ -376,7 +359,7 @@ static void print_scheduling_table(Process procs[], int n) {
     printf(LINE);
 }
  
-/* ---------- BAGIAN 4 : Rata-rata ---------- */
+/* ---------- Bagian 4 : Rata-rata ---------- */
 static void print_averages(Process procs[], int n) {
     double swt = 0, stat = 0, srt = 0;   
     for (int i = 0; i < n; i++) {
@@ -390,7 +373,7 @@ static void print_averages(Process procs[], int n) {
     printf("Average Response Time   : %.2f\n", srt / n);
 }
  
-/* ---------- BAGIAN 5 : CPU Utilization & Throughput ---------- */                              
+/* ---------- Bagian 5 : CPU Utilization & Throughput ---------- */                              
 static void print_cpu_util_throughput(int n, int total_time, int busy_time) {
     printf("\n" LINE "CPU UTILIZATION AND THROUGHPUT\n" LINE);
     if (total_time <= 0) { printf("Total waktu simulasi 0, metrik tidak terdefinisi.\n"); return; }
@@ -398,7 +381,7 @@ static void print_cpu_util_throughput(int n, int total_time, int busy_time) {
     printf("Throughput      : %.2f process/time unit\n", (double)n / total_time);
 }
 
-/* ---------- BAGIAN 6 : Context Switch  (PIC: A) ---------- */
+/* ---------- Bagian 6 : Context Switch   ---------- */
 static void print_context_switch(void) {
     printf("\n" LINE "CONTEXT SWITCH INFORMATION\n" LINE);
     printf("Total Context Switch : %d\n", cs_total);
@@ -407,7 +390,7 @@ static void print_context_switch(void) {
     printf("Total Preemption     : %d\n", preempt_count);
 }
 
-/* ---------- BAGIAN 7 : Process State  (PIC: D) ---------- */
+/* ---------- Bagian 7 : Process State   ---------- */
 static void print_process_states(Process procs[], int n) {
     printf("\n" LINE "PROCESS STATE TRANSITIONS\n" LINE);
     for (int i = 0; i < n; i++) {
@@ -438,9 +421,7 @@ static void print_all(Process procs[], int n, int quantum[NUM_Q], int total_time
     print_process_states(procs, n);
 }
 
-/* ------------------------------------------------------------------ */
-/* main                                                                */
-/* ------------------------------------------------------------------ */
+/* -------------------------- main -------------------------------- */
 
 int main(void) {
     Process procs[MAX_P];
