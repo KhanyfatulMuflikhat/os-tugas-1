@@ -34,11 +34,6 @@ QUEUE MIGRATIONS
 t=4 : P1 Q0 -> Q1 (quantum Q0 habis; sisa BT=2)
 t=11 : P3 Q0 -> Q1 (quantum Q0 habis; sisa BT=4)
 Total Queue Migration : 2
-=======================================================================
-HIGHER-QUEUE PREEMPTIONS
-=======================================================================
-Tidak ada preemption antarqueue.
-Total Preemption Antarqueue : 0
 
 =======================================================================
 SCHEDULING TABLE

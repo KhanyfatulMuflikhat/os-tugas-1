@@ -28,10 +28,6 @@ QUEUE MIGRATIONS
 t=2 : P1 Q0 -> Q1 (quantum Q0 habis; sisa BT=18)
 t=6 : P1 Q1 -> Q2 (quantum Q1 habis; sisa BT=14)
 Total Queue Migration : 2
-=======================================================================
-HIGHER-QUEUE PREEMPTIONS
-=======================================================================
-Total Preemption Antarqueue : 1
 
 =======================================================================
 SCHEDULING TABLE

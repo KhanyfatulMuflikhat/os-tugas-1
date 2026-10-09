@@ -324,13 +324,6 @@ static void print_movements(Process procs[], int n) {
     }
 }
 
-static void print_preemptions(void) {
-    printf(LINE "HIGHER-QUEUE PREEMPTIONS\n" LINE);
-    if (preempt_count == 0)
-        printf("Tidak ada preemption antarqueue.\n");
-    printf("Total Preemption Antarqueue : %d\n", preempt_count);
-}
-
 /* ---------- Bagian 3 : Scheduling Table ---------- */
 typedef struct { int tat, wt, rt; } Metric;
  
@@ -413,7 +406,6 @@ static void print_all(Process procs[], int n, int quantum[NUM_Q], int total_time
     print_gantt();
     print_movements(procs, n);
     print_queue_migrations();
-    print_preemptions();
     print_scheduling_table(procs, n);
     print_averages(procs, n);
     print_cpu_util_throughput(n, total_time, busy_time);
